@@ -1,13 +1,13 @@
 # This workflow will build a golang project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
-name: Crosscompile RICv2
+name: Crosscompile RICv2 for Release
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    # Sequence of patterns matched against refs/tags
+    tags:
+    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 jobs:
 
@@ -28,10 +28,15 @@ jobs:
     - name: Build RICv2_linux_arm
       run: GOOS=linux GOARCH=arm go build -o RICv2_linux_arm -v ./... 
     - name: Build RICv2_windows_amd64
-      run: GOOS=windows GOARCH=amd64 go build -o RICv2_windows_amd64.exe -v ./... 
-    - name: "Upload RICv2.zip"
-      uses: actions/upload-artifact@v4
+      run: GOOS=windows GOARCH=amd64 go build -o RICv2_windows_amd64 -v ./... 
+    - name: Release with Notes
+      uses: softprops/action-gh-release@v2
       with:
-        name: 'RICv2'
-        path: RICv2_*
+        files: |
+          RICv2_linux_amd64
+          RICv2_linux_arm64
+          RICv2_linux_arm
+          RICv2_windows_amd64.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
