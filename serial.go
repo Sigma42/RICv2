@@ -16,7 +16,7 @@ func maybe_register_serial(port_name string, r *Router) {
 		return
 	}
 
-	port, err := serial.Open(port_name, &serial.Mode{BaudRate: BAUDRATE})
+	_, err := serial.Open(port_name, &serial.Mode{BaudRate: BAUDRATE})
 	if err != nil {
 		log.Fatal(err)
 	}
