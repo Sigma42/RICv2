@@ -33,8 +33,5 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          RICv2_linux_amd64
-          RICv2_linux_arm64
-          RICv2_linux_arm
-          RICv2_windows_amd64.exe
+          RICv2_*
           
