@@ -9,12 +9,12 @@ on:
     tags:
     - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
-jobs:
+permissions:
+      contents: write
 
+jobs:
   build_add_to_release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
     - uses: actions/checkout@v4
     - name: Set up Go
