@@ -1,0 +1,55 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22.2'
+    - name: Install dependencies
+      run: go get .
+    - name: Build
+      run: |
+        GOOS=linux GOARCH=amd64 go build -v ./... -o RICv2_linux_amd64
+        GOOS=linux GOARCH=arm64 go build -v ./... -o RICv2_linux_arm64
+        GOOS=linux GOARCH=arm go build -v ./... -o RICv2_linux_arm
+        GOOS=windows GOARCH=amd64 go build -v ./... -o RICv2_windows_amd64.exe
+                - name: GH Release
+    - name: "Upload RICv2 Linux AMD64"
+      uses: actions/upload-artifact@v4
+      with:
+        name: 'RICv2 linux amd64'
+        path: RICv2_linux_amd64
+        if-no-files-found: error
+    - name: "Upload RICv2 Linux ARM64"
+      uses: actions/upload-artifact@v4
+      with:
+        name: 'RICv2 linux arm64'
+        path: RICv2_linux_arm64
+        if-no-files-found: error
+    - name: "Upload RICv2 Linux ARM (32)"
+      uses: actions/upload-artifact@v4
+      with:
+        name: 'RICv2 linux arm'
+        path: RICv2_linux_arm
+        if-no-files-found: error
+    - name: "Upload RICv2 Windows AMD64"
+      uses: actions/upload-artifact@v4
+      with:
+        name: 'RICv2 windows amd64'
+        path: RICv2_windows_amd64
+        if-no-files-found: error
+          
