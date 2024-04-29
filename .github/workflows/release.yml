@@ -37,6 +37,4 @@ jobs:
           RICv2_linux_arm64
           RICv2_linux_arm
           RICv2_windows_amd64.exe
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
