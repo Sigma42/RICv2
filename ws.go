@@ -12,8 +12,6 @@ import (
 
 var upgrader = websocket.Upgrader{} // use default options
 
-//TODO REINIT when client send HANDSHAKE
-
 func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +50,13 @@ func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 
 			address, channel, snooping, err = hP.asHandshake(router)
 		}
-		defer router.notifyDisconnected(address)
+
+		closeConnection := make(chan bool)
+		c.SetCloseHandler(func(code int, text string) error {
+			closeConnection <- true
+			router.notifyDisconnected(address)
+			return nil
+		})
 
 		if snooping {
 			router.registerSnooper(address)
@@ -65,30 +69,45 @@ func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 
 			for {
-				mt, message, err := c.ReadMessage()
-				if err != nil {
-					break //Close on error
-				}
-				if mt != websocket.BinaryMessage {
-					continue //Skip message with wrong type
+				select {
+				case <-closeConnection:
+					return
+				default:
+					mt, message, err := c.ReadMessage()
+					if err != nil {
+						return //Close on error
+					}
+					if mt != websocket.BinaryMessage {
+						continue //Skip message with wrong type
+					}
+
+					p, err := packagefromBytes(message)
+					if err != nil {
+						continue //Skip message with wrong size
+					}
+
+					router.route(p)
 				}
 
-				p, err := packagefromBytes(message)
-				if err != nil {
-					continue //Skip message with wrong size
-				}
-
-				router.route(p)
 			}
 
 		}()
+
 		go func() {
 			defer wg.Done()
 
-			for p := range channel {
-				err = c.WriteMessage(websocket.BinaryMessage, p.toBytes())
-				if err != nil {
-					break
+			for {
+				select {
+				case p, ok := <-channel:
+					if !ok {
+						return // The channel was closed, exit the goroutine
+					}
+					err = c.WriteMessage(websocket.BinaryMessage, p.toBytes())
+					if err != nil {
+						return // Exit on error
+					}
+				case <-closeConnection: // This listens for a signal on the closeConnection channel
+					return // Exit when true is sent on closeConnection
 				}
 			}
 		}()

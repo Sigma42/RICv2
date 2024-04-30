@@ -10,7 +10,7 @@ import (
 	src      uint8
 	dst      uint8
 	flags	 uint8 -> MSB[ disconnted (src) ,Unused,Unused,Unused,Unused,Unused,snoop,register  ]LSB
-	data     [16]byte
+	data     [20]byte
 }*/
 
 const PACKAGE_SIZE = 24
@@ -72,7 +72,7 @@ func (p *Package) asHandshake(r *Router) (uint8, chan *Package, bool, error) {
 	wantsToSnoop := (p.flags() & 2) != 0
 
 	r.chanMutex.RLock()
-	r.sendToSnooper(p) //ALSO send succesfull handshake to Snooper
+	r.sendToSnooper(p, false, 0) //ALSO send succesfull handshake to Snooper
 	r.chanMutex.RUnlock()
 
 	return src, r.channels[src], wantsToSnoop, nil
@@ -102,13 +102,17 @@ func (r *Router) route(p *Package) {
 
 	r.channels[p.dst()] <- p
 
-	r.sendToSnooper(p)
+	r.sendToSnooper(p, true, p.dst())
 
 	r.chanMutex.RUnlock()
 }
 
-func (r *Router) sendToSnooper(p *Package) {
-	r.snooperChannels.Range(func(_ any, value any) bool {
+func (r *Router) sendToSnooper(p *Package, shouldIgnore bool, ignoreKey uint8) {
+	r.snooperChannels.Range(func(key any, value any) bool {
+		if shouldIgnore && key.(uint8) == ignoreKey {
+			return true
+		}
+
 		var channel chan *Package = value.(chan *Package)
 
 		channel <- p
@@ -136,7 +140,7 @@ func (r *Router) notifyDisconnected(src uint8) {
 		fmt.Printf("This should not have happend!!")
 	}
 
-	r.sendToSnooper(p)
+	r.sendToSnooper(p, false, 0)
 }
 
 func (r *Router) cleanup() {

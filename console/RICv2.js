@@ -47,7 +47,7 @@ class RobotikInterConnect {
      * 
      * @param {number} target 0-255
      * @param {number} flags 8Bit = MSB[ disconnted (src) ,Unused,Unused,Unused,Unused,Unused,snoop,register  ]LSB
-     * @param {Uint8Array | Uint16Array | Uint32Array | BigUint64Array | Float32Array | Float64Array} data length 16 Byte
+     * @param {Uint8Array | Uint16Array | Uint32Array | BigUint64Array | Float32Array | Float64Array} data length 20 Byte
      */
     send(target,flags, data) {
         let buf = this.new_package()
@@ -68,7 +68,6 @@ class RobotikInterConnect {
 
         buf[0] = this.version;
         buf[1] = this.src;
-        console.log(this.src);
 
         return buf;
     }

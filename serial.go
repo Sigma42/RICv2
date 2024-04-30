@@ -14,8 +14,6 @@ import (
 const BAUDRATE = 57600 //115200 //9600
 var SELECTORS = regexp.MustCompile(`(tty[\s\S]*?(ACM))|((ACM)[\s\S]*?tty)`)
 
-//TODO REINIT when client send HANDSHAKE
-
 func maybe_register_serial(port_name string, r *Router) {
 	if !SELECTORS.Match([]byte(port_name)) {
 		return
@@ -60,6 +58,8 @@ func maybe_register_serial(port_name string, r *Router) {
 		defer r.unregisterSnooper(address)
 	}
 
+	closeConnection := make(chan bool, 2) //Has to have buffer to prevent deadlock
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
@@ -74,31 +74,56 @@ func maybe_register_serial(port_name string, r *Router) {
 		}
 
 		for {
-			_, err = io.ReadFull(port, in_buf)
-			if err != nil {
+			select {
+			case <-closeConnection:
 				return
+			default:
+				_, err = io.ReadFull(port, in_buf)
+				if err != nil {
+					closeConnection <- true
+					return
+				}
+
+				if (in_package.flags() & 1) != 0 {
+					continue //Ignore new Register (hopfully will handle restart of Serial-Client (where the connection stays open) )
+				}
+
+				r.route(in_package)
 			}
 
-			r.route(in_package)
 		}
 
 	}()
+
 	go func() {
 		defer wg.Done()
 
-		for p := range channel {
-			err := port.Drain()
-			if err != nil {
-				return
-			}
+		for {
+			select {
+			case p, ok := <-channel:
+				if !ok {
+					closeConnection <- true
+					return // The channel was closed, exit the goroutine
+				}
 
-			n, err := port.Write(p.toBytes())
-			if err != nil {
-				return
-			}
-			if n != PACKAGE_SIZE {
-				log.Println("PACKAGE WAS NOT COMPLETLE SEND (send bytes WRONG SIZE). IGNORING!!")
-				continue
+				err := port.Drain()
+				if err != nil {
+					closeConnection <- true
+					return
+				}
+
+				n, err := port.Write(p.toBytes())
+				if err != nil {
+					closeConnection <- true
+					return
+				}
+				if n != PACKAGE_SIZE {
+					log.Println("PACKAGE WAS NOT COMPLETLE SEND (send bytes WRONG SIZE). IGNORING!!")
+					continue
+				}
+
+			case <-closeConnection: // This listens for a signal on the closeConnection channel
+				return // Exit when true is sent on closeConnection
 			}
 		}
 	}()
