@@ -1,15 +1,15 @@
 class RobotikInterConnect {
 
-    constructor(client_addr, recv_callback = (version,src,dst,tags,data)=>{} ,server_addr,port=8080) {
+    constructor(client_addr, recv_callback = (version,src,dst,tags,data)=>{} ,url) {
         this.version = 1;
         this.src = client_addr;
 
         if ("WebSocket" in window) {
-            this.websocket = new WebSocket("ws://"+this.addr+":"+this.port);
+            this.websocket = new WebSocket(url);
             this.websocket.binaryType = "arraybuffer";
 
             this.websocket.onopen = ()=>{
-                this.send(0,3,new Uint8Array(8));
+                this.send(this.src,3,new Uint8Array(8));
             };
 
             this.websocket.onclose = () => {
@@ -68,6 +68,9 @@ class RobotikInterConnect {
 
         buf[0] = this.version;
         buf[1] = this.src;
+        console.log(this.src);
+
+        return buf;
     }
 
 

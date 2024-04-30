@@ -71,7 +71,10 @@ func (p *Package) asHandshake(r *Router) (uint8, chan *Package, bool, error) {
 	src := p.src()
 	wantsToSnoop := (p.flags() & 2) != 0
 
+	r.chanMutex.RLock()
 	r.sendToSnooper(p) //ALSO send succesfull handshake to Snooper
+	r.chanMutex.RUnlock()
+
 	return src, r.channels[src], wantsToSnoop, nil
 }
 
