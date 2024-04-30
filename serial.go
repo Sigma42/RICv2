@@ -14,6 +14,8 @@ import (
 const BAUDRATE = 57600 //115200 //9600
 var SELECTORS = regexp.MustCompile(`(tty[\s\S]*?(ACM))|((ACM)[\s\S]*?tty)`)
 
+//TODO REINIT when client send HANDSHAKE
+
 func maybe_register_serial(port_name string, r *Router) {
 	if !SELECTORS.Match([]byte(port_name)) {
 		return

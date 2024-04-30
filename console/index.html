@@ -2,73 +2,57 @@
 <html>
     <head>
         <meta charset="utf-8">
-        <link rel="stylesheet" href="xterm.css" />
-        <script src="xterm.js"></script>
-
-        <script>
-        window.addEventListener("load", function(evt) {
-
-            var output = document.getElementById("output");
-            var input = document.getElementById("input");
-            var ws;
-
-            var print = function(message) {
-                var d = document.createElement("div");
-                d.textContent = message;
-                output.appendChild(d);
-                output.scroll(0, output.scrollHeight);
-            };
-
-            document.getElementById("open").onclick = function(evt) {
-                if (ws) {
-                    return false;
-                }
-                ws = new WebSocket("/");
-                ws.onopen = function(evt) {
-                    print("OPEN");
-                }
-                ws.onclose = function(evt) {
-                    print("CLOSE");
-                    ws = null;
-                }
-                ws.onmessage = function(evt) {
-                    print("RESPONSE: " + evt.data);
-                }
-                ws.onerror = function(evt) {
-                    print("ERROR: " + evt.data);
-                }
-                return false;
-            };
-
-            document.getElementById("send").onclick = function(evt) {
-                if (!ws) {
-                    return false;
-                }
-                print("SEND: " + input.value);
-                ws.send(input.value);
-                return false;
-            };
-
-            document.getElementById("close").onclick = function(evt) {
-                if (!ws) {
-                    return false;
-                }
-                ws.close();
-                return false;
-            };
-
-        });
-        </script>
+        <script src="RICv2.js"></script>
         
     </head>
     <body>
-    <div id="terminal"></div>
+      <div id="output"></div>
       <script>
-        var term = new Terminal();
-        term.open(document.getElementById('terminal'));
-        for (let i=0; i < 1000; i++) {
-            term.writeln('Hello from \x1B[1;3;31mxterm.js\x1B[0m' + i)
-        }
+        let output = document.querySelector("#output");
+
+        let callback = (version,src,dst,tags,data)=>{
+            let newEntry = document.createElement("div");
+            
+            let datetime = new Date();
+            let time = `${datetime.getHours() < 10 ? "0" : ""}${datetime.getHours()}:${datetime.getMinutes() < 10 ? "0" : ""}${datetime.getMinutes()}:${datetime.getSeconds() < 10 ? "0" : ""}${datetime.getSeconds() + datetime.getMilliseconds()/1000}`;
+
+            if (tags & 1 != 0) {
+                //Conntected new
+                let snooping_enabled = tags & 2 != 0;
+
+                newEntry.classList.add("disconncted");
+                newEntry.innerHTML = `
+                    <div class="version">v${version}</div>
+                    <div class="time">${time}</div>
+                    <div class="who">${src}</div>
+                    <div class="message">Connected ${snooping_enabled ? "(can snoop)" : ""}</div>
+                    `;
+            } else if (tags & 128 != 0) {
+                //Disconnected
+
+                newEntry.classList.add("disconncted");
+                newEntry.innerHTML = `
+                    <div class="version">v${version}</div>
+                    <div class="time">${time}</div>
+                    <div class="who">${src}</div>
+                    <div class="message">Disconnected</div>
+                    `;
+            } else {
+                //Message
+
+                newEntry.classList.add("message");
+                newEntry.innerHTML = `
+                    <div class="version">v${version}</div>
+                    <div class="time">${time}</div>
+                    <div class="who">Message from ${src} to ${dst}</div>
+                    <div class="message">${data}</div>
+                    `;
+            }
+
+            
+            output.appendChild(newEntry);
+        };
+        let ric = new RobotikInterConnect(0,callback,"/",8080);
         
       </script>
     </body>

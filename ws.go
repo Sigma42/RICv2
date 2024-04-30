@@ -12,6 +12,8 @@ import (
 
 var upgrader = websocket.Upgrader{} // use default options
 
+//TODO REINIT when client send HANDSHAKE
+
 func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
