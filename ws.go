@@ -2,7 +2,7 @@ package main
 
 import (
 	"embed"
-	_ "embed"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -15,6 +15,8 @@ var upgrader = websocket.Upgrader{} // use default options
 func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+
 		c, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Print("upgrade:", err)
@@ -22,16 +24,34 @@ func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 		}
 		defer c.Close()
 
-		//Handshake
-		mt, message, err := c.ReadMessage()
-		if err != nil || mt != websocket.BinaryMessage {
-			return
+		var address uint8
+		var channel chan *Package
+		var snooping bool
+		err = fmt.Errorf("dummy error")
+
+		for err != nil { //Wait until register message
+			var mt int
+			var message []byte
+			var hP *Package
+
+			//Handshake
+			mt, message, err = c.ReadMessage()
+			if err != nil {
+				return //Close on error
+			}
+			if mt != websocket.BinaryMessage {
+				continue //Skip message with wrong type
+			}
+
+			hP, err = packagefromBytes(message)
+			if err != nil {
+				continue //Skip message with wrong size
+			}
+
+			address, channel, snooping, err = hP.asHandshake(router)
 		}
-		hP, err := packagefromBytes(message)
-		if err != nil {
-			return
-		}
-		address, channel, snooping := hP.asHandshake(router)
+		defer router.notifyDisconnected(address)
+
 		if snooping {
 			router.registerSnooper(address)
 			defer router.unregisterSnooper(address)
@@ -76,12 +96,13 @@ func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//go:embed index.html
+//go:embed console/*
 var content embed.FS
 
 func main_ws(r *Router) {
 	http.HandleFunc("/", ws(r))
-	http.Handle("/console", http.StripPrefix("/console", http.FileServer(http.FS(content))))
+
+	http.Handle("/console/*", http.FileServer(http.FS(content)))
 
 	http.ListenAndServe("0.0.0.0:8080", nil)
 }
