@@ -101,7 +101,7 @@
 
             if ((tags & 1) != 0) {
                 //Conntected new
-                let snooping_enabled = tags & 2 != 0;
+                let snooping_enabled = (tags & 2) != 0;
 
                 newEntry.classList.add("conncted");
                 newEntry.innerHTML = `

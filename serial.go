@@ -91,6 +91,8 @@ func maybe_register_serial(port_name string, r *Router) {
 					return
 				}
 
+				fmt.Println("Recievd: ",in_buf)
+
 				if (in_package.flags() & 1) != 0 {
 					continue //Ignore new Register (hopfully will handle restart of Serial-Client (where the connection stays open) )
 				}
@@ -113,11 +115,13 @@ func maybe_register_serial(port_name string, r *Router) {
 					return // The channel was closed, exit the goroutine
 				}
 
-				err := port.Drain()
+				/*err := port.Drain()
 				if err != nil {
 					closeConnection <- true
 					return
-				}
+				}*/
+
+				fmt.Println("Start sending:",p.toBytes())
 
 				n, err := port.Write(p.toBytes())
 				if err != nil {
