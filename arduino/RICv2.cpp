@@ -18,17 +18,19 @@ RobotikInterConnect::RobotikInterConnect(unsigned char address) {
 }
 
 bool RobotikInterConnect::can_recv() {
-    return Serial.available() => sizeof(RIC_PCK);
+    return Serial.available() >= sizeof(RIC_PCK);
 }
 
 bool RobotikInterConnect::can_send() {
-    return Serial.availableToWrite() => sizeof(RIC_PCK);
+    return Serial.availableForWrite() >= sizeof(RIC_PCK);
 }
 
 //Have to set target and data
 void RobotikInterConnect::send(RIC_PCK& p) {
     p.version = this->version;
     p.src = this->address;
+
+    while (!can_send()) delay(2);
 
     Serial.write((uint8_t*)&p,sizeof(RIC_PCK));
 }

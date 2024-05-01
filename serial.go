@@ -72,32 +72,25 @@ func maybe_register_serial(port_name string, r *Router) {
 	go func() {
 		defer wg.Done()
 
-		//not recreate package
-		in_buf := make_package_bytes_buffer()
-		in_package, err := packagefromBytes(in_buf)
-		if err != nil {
-			log.Println("NOT HAPPEN !!!!")
-			return //SHOULD NOT HAPPEN !!!!
-		}
-
 		for {
 			select {
 			case <-closeConnection:
 				return
 			default:
+				in_buf := make_package_bytes_buffer()
+				in_package, err := packagefromBytes(in_buf)
+				if err != nil {
+					log.Println("NOT HAPPEN !!!!")
+					return //SHOULD NOT HAPPEN !!!!
+				}
+
 				_, err = io.ReadFull(port, in_buf)
 				if err != nil {
 					closeConnection <- true
 					return
 				}
 
-				fmt.Println("Recievd: ",in_buf,in_package)
-
-				in_package, err = packagefromBytes(in_buf)
-				if err != nil {
-					log.Println("NOT HAPPEN !!!!")
-					return //SHOULD NOT HAPPEN !!!!
-				}
+				fmt.Println("Recievd: ",in_buf)
 
 				if (in_package.flags() & 1) != 0 {
 					continue //Ignore new Register (hopfully will handle restart of Serial-Client (where the connection stays open) )

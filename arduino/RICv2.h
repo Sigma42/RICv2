@@ -37,6 +37,7 @@ public:
 
     RobotikInterConnect(unsigned char address);
     bool can_recv();
+    bool can_send();
     void send(RIC_PCK &p);
     void recv(RIC_PCK &p);
 

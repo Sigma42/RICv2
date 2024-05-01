@@ -100,6 +100,8 @@ func newRouter() *Router {
 func (r *Router) route(p *Package) {
 	r.chanMutex.RLock()
 
+	fmt.Printl("Routing:",p)
+
 	r.channels[p.dst()] <- p
 
 	r.sendToSnooper(p, true, p.dst())
