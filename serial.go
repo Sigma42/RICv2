@@ -15,9 +15,12 @@ const BAUDRATE = 57600 //115200 //9600
 var SELECTORS = regexp.MustCompile(`(tty[\s\S]*?(ACM))|((ACM)[\s\S]*?tty)`)
 
 func maybe_register_serial(port_name string, r *Router) {
+	fmt.Println("try:",port_name)
 	if !SELECTORS.Match([]byte(port_name)) {
 		return
 	}
+
+	fmt.Println("open:",port_name)
 
 	port, err := serial.Open(port_name, &serial.Mode{BaudRate: BAUDRATE})
 	if err != nil {
@@ -28,6 +31,8 @@ func maybe_register_serial(port_name string, r *Router) {
 		log.Fatal(err)
 	}
 	defer port.Close()
+
+	fmt.Println("opened:",port_name)
 
 	var address uint8
 	var channel chan *Package
@@ -43,6 +48,8 @@ func maybe_register_serial(port_name string, r *Router) {
 		if err != nil {
 			return
 		}
+
+		fmt.Println("handshake candidate:",buf)
 
 		hP, err = packagefromBytes(buf)
 		if err != nil {

@@ -29,7 +29,7 @@ void RobotikInterConnect::send(RIC_PCK& p) {
     p.src = this->address;
     p.flags = 0;
 
-    while (can_send()) delay(2);
+    while (!can_send()) delay(2);
 
     Serial.write((uint8_t*)&p,sizeof(RIC_PCK));
 
@@ -39,7 +39,7 @@ void RobotikInterConnect::send(RIC_PCK& p) {
 }
 
 void RobotikInterConnect::recv(RIC_PCK& p) {
-    while (can_recv()) delay(2);
+    while (!can_recv()) delay(2);
 
     Serial.readBytes((uint8_t*)&p,sizeof(RIC_PCK));
 }
