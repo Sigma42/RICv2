@@ -60,6 +60,10 @@
             input[type=number] {
                 width: 48px;
             }
+
+            input[type=text] {
+                width: 200px;
+            }
         </style>
     </head>
     <body>
@@ -67,37 +71,23 @@
       <form>
         <input type="number" style="width: 120px;" name="target" max="255" min="0" placeholder="target">
         <span >----</span>
-        <input type="number" name="data20" max="255" min="0">
-        <input type="number" name="data19" max="255" min="0">
-        <input type="number" name="data18" max="255" min="0">
-        <input type="number" name="data17" max="255" min="0">
-        <input type="number" name="data16" max="255" min="0">
-        <input type="number" name="data15" max="255" min="0">
-        <input type="number" name="data14" max="255" min="0">
-        <input type="number" name="data13" max="255" min="0">
-        <input type="number" name="data12" max="255" min="0">
-        <input type="number" name="data11" max="255" min="0">
-        <input type="number" name="data10" max="255" min="0">
-        <input type="number" name="data9" max="255" min="0">
-        <input type="number" name="data8" max="255" min="0">
-        <input type="number" name="data7" max="255" min="0">
-        <input type="number" name="data6" max="255" min="0">
-        <input type="number" name="data5" max="255" min="0">
-        <input type="number" name="data4" max="255" min="0">
-        <input type="number" name="data3" max="255" min="0">
-        <input type="number" name="data2" max="255" min="0">
-        <input type="number" name="data1" max="255" min="0">
+        <input type="text" name="data">
 
         <input type="button" value="send">
       </form>
       <script>
         let output = document.querySelector("#output");
 
+        let decoder = new TextDecoder();
+        let encoder = new TextEncoder();
+
         let callback = (version,src,dst,tags,data)=>{
             let newEntry = document.createElement("div");
             
             let datetime = new Date();
             let time = `${datetime.getHours() < 10 ? "0" : ""}${datetime.getHours()}:${datetime.getMinutes() < 10 ? "0" : ""}${datetime.getMinutes()}:${datetime.getSeconds() < 10 ? "0" : ""}${(datetime.getSeconds() + datetime.getMilliseconds()/1000).toFixed(3)}`;
+
+            let text = decoder.decode(data);
 
             if ((tags & 1) != 0) {
                 //Conntected new
@@ -125,7 +115,7 @@
                 newEntry.innerHTML = `
                     <div class="time">${time}</div>
                     <div class="who">Message from ${src} to ${dst}</div>
-                    <div class="message">${data}</div>
+                    <div class="message">${text}</div>
                     `;
             }
 
@@ -150,12 +140,9 @@
         button.addEventListener("click",(event)=>{
             let fd = new FormData(form);
             let target = Number(fd.get("target"));
-            let arr = [];
-            for (let i=20; i > 0; i--) {
-                arr.push(Number(fd.get(`data${i}`)));
-            }
+            let text = fd.get("data");
 
-            let data = new Uint8Array(arr);
+            let data = new Uint8Array(encoder.encode(text));
 
             ric.send(target,0,data);
         });
