@@ -156,7 +156,7 @@ func main_ws(r *Router) {
 		log.Fatalln("Should not happen!!!!")
 	}
 
-	http.Handle("/*", fileServer(http.FS(staticFS), "web/app.html"))
+	http.Handle("/", fileServer(http.FS(staticFS), "web/app.html"))
 
 	http.ListenAndServe("0.0.0.0:8080", nil)
 }
