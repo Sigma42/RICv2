@@ -15,9 +15,12 @@ const BAUDRATE = 57600 //115200 //9600
 var SELECTORS = regexp.MustCompile(`(tty[\s\S]*?(ACM))|((ACM)[\s\S]*?tty)`)
 
 func maybe_register_serial(port_name string, r *Router) {
+	fmt.Println("try:",port_name)
 	if !SELECTORS.Match([]byte(port_name)) {
 		return
 	}
+
+	fmt.Println("open:",port_name)
 
 	port, err := serial.Open(port_name, &serial.Mode{BaudRate: BAUDRATE})
 	if err != nil {
@@ -28,6 +31,8 @@ func maybe_register_serial(port_name string, r *Router) {
 		log.Fatal(err)
 	}
 	defer port.Close()
+
+	fmt.Println("opened:",port_name)
 
 	var address uint8
 	var channel chan *Package
@@ -43,6 +48,8 @@ func maybe_register_serial(port_name string, r *Router) {
 		if err != nil {
 			return
 		}
+
+		fmt.Println("handshake candidate:",buf)
 
 		hP, err = packagefromBytes(buf)
 		if err != nil {
@@ -66,24 +73,25 @@ func maybe_register_serial(port_name string, r *Router) {
 	go func() {
 		defer wg.Done()
 
-		//not recreate package
-		in_buf := make_package_bytes_buffer()
-		in_package, err := packagefromBytes(in_buf)
-		if err != nil {
-			log.Println("NOT HAPPEN !!!!")
-			return //SHOULD NOT HAPPEN !!!!
-		}
-
 		for {
 			select {
 			case <-closeConnection:
 				return
 			default:
+				in_buf := make_package_bytes_buffer()
+				in_package, err := packagefromBytes(in_buf)
+				if err != nil {
+					log.Println("NOT HAPPEN !!!!")
+					return //SHOULD NOT HAPPEN !!!!
+				}
+
 				_, err = io.ReadFull(port, in_buf)
 				if err != nil {
 					closeConnection <- true
 					return
 				}
+
+				fmt.Println("Recievd: ",in_buf)
 
 				if (in_package.flags() & 1) != 0 {
 					continue //Ignore new Register (hopfully will handle restart of Serial-Client (where the connection stays open) )
@@ -107,11 +115,13 @@ func maybe_register_serial(port_name string, r *Router) {
 					return // The channel was closed, exit the goroutine
 				}
 
-				err := port.Drain()
+				/*err := port.Drain()
 				if err != nil {
 					closeConnection <- true
 					return
-				}
+				}*/
+
+				fmt.Println("Start sending:",p.toBytes())
 
 				n, err := port.Write(p.toBytes())
 				if err != nil {
