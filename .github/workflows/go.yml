@@ -21,6 +21,14 @@ jobs:
         go-version: '1.22.2'
     - name: Install dependencies
       run: go get .
+    - name: Get Web page
+      run: |
+          cd web/
+          rm index.html
+          rm RICv2.ts
+          wget https://github.com/PaulElijas/Robotik-Bestell-App/releases/download/v0.1/RobotikBestellApp.zip
+          unzip RobotikBestellApp.zip
+          rm RobotikBestellApp.zip
     - name: Build RICv2_linux_amd64
       run: GOOS=linux GOARCH=amd64 go build -o RICv2_linux_amd64 -v ./... 
     - name: Build RICv2_linux_arm64
