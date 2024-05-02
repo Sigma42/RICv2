@@ -60,6 +60,7 @@ func maybe_register_serial(port_name string, r *Router) {
 
 	closeConnection := make(chan bool, 2) //Has to have buffer to prevent deadlock
 
+	r.connectedClientsAdd(address)
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {

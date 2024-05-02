@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"sync"
@@ -10,7 +11,11 @@ import (
 	"github.com/fasthttp/websocket"
 )
 
-var upgrader = websocket.Upgrader{} // use default options
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins
+	},
+} // use default options
 
 func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 
@@ -63,6 +68,7 @@ func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 			defer router.unregisterSnooper(address)
 		}
 
+		router.connectedClientsAdd(address)
 		var wg sync.WaitGroup
 		wg.Add(2)
 		go func() {
@@ -117,13 +123,32 @@ func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//go:embed console/*
+//go:embed web/*
 var content embed.FS
 
-func main_ws(r *Router) {
-	http.HandleFunc("/", ws(r))
+func fileServer(root http.FileSystem, defaultFile string) http.Handler {
+	fs := http.FileServer(root)
 
-	http.Handle("/console/*", http.FileServer(http.FS(content)))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := root.Open(r.URL.Path)
+		if err != nil { // File does not exist
+			http.ServeFile(w, r, defaultFile)
+			return
+		}
+		// Serve the actual file
+		fs.ServeHTTP(w, r)
+	})
+}
+
+func main_ws(r *Router) {
+	http.HandleFunc("/ws", ws(r))
+
+	staticFS, err := fs.Sub(content, "web")
+	if err != nil {
+		log.Fatalln("Should not happen!!!!")
+	}
+
+	http.Handle("/*", fileServer(http.FS(staticFS), "web/app.html"))
 
 	http.ListenAndServe("0.0.0.0:8080", nil)
 }

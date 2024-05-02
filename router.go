@@ -9,7 +9,7 @@ import (
 	version  uint8
 	src      uint8
 	dst      uint8
-	flags	 uint8 -> MSB[ disconnted (src) ,Unused,Unused,Unused,Unused,Unused,snoop,register  ]LSB
+	flags	 uint8 -> MSB[ disconnted (src) ,Unused,Unused,Unused,Unused,request-list,snoop,register  ]LSB
 	data     [20]byte
 }*/
 
@@ -81,8 +81,9 @@ func (p *Package) asHandshake(r *Router) (uint8, chan *Package, bool, error) {
 type Router struct {
 	channels []chan *Package
 
-	snooperChannels sync.Map
-	chanMutex       sync.RWMutex
+	connectedClients sync.Map
+	snooperChannels  sync.Map
+	chanMutex        sync.RWMutex
 }
 
 func newRouter() *Router {
@@ -100,11 +101,60 @@ func newRouter() *Router {
 func (r *Router) route(p *Package) {
 	r.chanMutex.RLock()
 
-	r.channels[p.dst()] <- p
+	if (p.flags() & 4) != 0 { // Request list
 
-	r.sendToSnooper(p, true, p.dst())
+		list := r.connectedClientsGet()
+
+		for i := 0; i < len(list); i += 20 {
+			buf := make_package_bytes_buffer()
+			buf[0] = p.version()
+			buf[1] = p.src()
+			buf[2] = p.src()
+			buf[3] = p.flags()
+
+			j := 0
+			for ; i+j < len(list) && j < 20; j += 1 {
+				buf[j+4] = list[i+j]
+			}
+			for ; j < 20; j += 1 {
+				buf[j+4] = buf[4]
+			}
+
+			newP, err := packagefromBytes(buf)
+			if err != nil {
+				fmt.Println("SHOULD NOT HAPPEN!!!")
+			}
+
+			r.channels[p.src()] <- newP
+		}
+
+	} else { // Normal Routing
+		r.channels[p.dst()] <- p
+
+		r.sendToSnooper(p, true, p.dst())
+	}
 
 	r.chanMutex.RUnlock()
+}
+
+func (r *Router) connectedClientsAdd(i uint8) {
+	r.connectedClients.Store(i, i)
+}
+
+func (r *Router) connectedClientsRemove(i uint8) {
+	r.connectedClients.Delete(i)
+}
+
+func (r *Router) connectedClientsGet() []uint8 {
+	list := make([]uint8, 0, 24)
+
+	r.connectedClients.Range(func(key any, value any) bool {
+		list = append(list, key.(uint8))
+
+		return true
+	})
+
+	return list
 }
 
 func (r *Router) sendToSnooper(p *Package, shouldIgnore bool, ignoreKey uint8) {
@@ -130,6 +180,8 @@ func (r *Router) unregisterSnooper(idx uint8) {
 }
 
 func (r *Router) notifyDisconnected(src uint8) {
+
+	r.connectedClientsRemove(src)
 
 	buf := make_package_bytes_buffer()
 	buf[1] = src
