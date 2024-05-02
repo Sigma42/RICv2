@@ -35,6 +35,7 @@ jobs:
           cd web/
           rm index.html
           rm RICv2.ts
+          rm app.html
           unzip RobotikBestellApp.zip
           rm RobotikBestellApp.zip
     - name: Build RICv2_linux_amd64
