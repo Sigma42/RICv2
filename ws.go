@@ -32,12 +32,13 @@ func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 		var address uint8
 		var channel chan *Package
 		var snooping bool
+		var has_dynamic_src bool
 		err = fmt.Errorf("dummy error")
+		var hP *Package
 
 		for err != nil { //Wait until register message
 			var mt int
 			var message []byte
-			var hP *Package
 
 			//Handshake
 			mt, message, err = c.ReadMessage()
@@ -53,7 +54,14 @@ func ws(router *Router) func(w http.ResponseWriter, r *http.Request) {
 				continue //Skip message with wrong size
 			}
 
-			address, channel, snooping, err = hP.asHandshake(router)
+			address, channel, snooping, has_dynamic_src, err = hP.asHandshake(router)
+		}
+
+		if has_dynamic_src {
+			err = c.WriteMessage(websocket.BinaryMessage, hP.toBytes()) //HP sollte korrekte neue SRC haben (wegen asHandshake)
+			if err != nil {
+				return // Exit on error
+			}
 		}
 
 		closeConnection := make(chan bool)

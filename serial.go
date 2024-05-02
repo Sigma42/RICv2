@@ -15,12 +15,12 @@ const BAUDRATE = 57600 //115200 //9600
 var SELECTORS = regexp.MustCompile(`(tty[\s\S]*?(ACM))|((ACM)[\s\S]*?tty)`)
 
 func maybe_register_serial(port_name string, r *Router) {
-	fmt.Println("try:",port_name)
+	fmt.Println("try:", port_name)
 	if !SELECTORS.Match([]byte(port_name)) {
 		return
 	}
 
-	fmt.Println("open:",port_name)
+	fmt.Println("open:", port_name)
 
 	port, err := serial.Open(port_name, &serial.Mode{BaudRate: BAUDRATE})
 	if err != nil {
@@ -32,33 +32,45 @@ func maybe_register_serial(port_name string, r *Router) {
 	}
 	defer port.Close()
 
-	fmt.Println("opened:",port_name)
+	fmt.Println("opened:", port_name)
 
 	var address uint8
 	var channel chan *Package
 	var snooping bool
+	var has_dynamic_src bool
 	err = fmt.Errorf("dummy error")
 
+	var hP *Package
 	buf := make_package_bytes_buffer()
 
 	for err != nil {
-		var hP *Package
 
 		_, err = io.ReadFull(port, buf)
 		if err != nil {
 			return
 		}
 
-		fmt.Println("handshake candidate:",buf)
+		fmt.Println("handshake candidate:", buf)
 
 		hP, err = packagefromBytes(buf)
 		if err != nil {
 			continue //Skip message with wrong size
 		}
 
-		address, channel, snooping, err = hP.asHandshake(r)
+		address, channel, snooping, has_dynamic_src, err = hP.asHandshake(r)
 	}
 	defer r.notifyDisconnected(address)
+
+	if has_dynamic_src {
+		n, err := port.Write(hP.toBytes()) //HP sollte korrekte neue SRC haben (wegen asHandshake)
+		if err != nil {
+			return
+		}
+		if n != PACKAGE_SIZE {
+			log.Println("PACKAGE WAS NOT COMPLETLE SEND (send bytes WRONG SIZE). IGNORING!!")
+			return
+		}
+	}
 
 	if snooping {
 		r.registerSnooper(address)
@@ -91,7 +103,7 @@ func maybe_register_serial(port_name string, r *Router) {
 					return
 				}
 
-				fmt.Println("Recievd: ",in_buf)
+				fmt.Println("Recievd: ", in_buf)
 
 				if (in_package.flags() & 1) != 0 {
 					continue //Ignore new Register (hopfully will handle restart of Serial-Client (where the connection stays open) )
@@ -121,7 +133,7 @@ func maybe_register_serial(port_name string, r *Router) {
 					return
 				}*/
 
-				fmt.Println("Start sending:",p.toBytes())
+				fmt.Println("Start sending:", p.toBytes())
 
 				n, err := port.Write(p.toBytes())
 				if err != nil {
