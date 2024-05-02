@@ -139,11 +139,11 @@ func fileServer(root http.FileSystem, defaultFile string) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := root.Open(r.URL.Path)
-		if err != nil { // File does not exist
-			http.ServeFile(w, r, defaultFile)
-			return
+
+		if err != nil {
+			r.URL.Path = "/app.html"
 		}
-		// Serve the actual file
+
 		fs.ServeHTTP(w, r)
 	})
 }
