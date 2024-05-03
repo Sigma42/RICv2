@@ -24,11 +24,11 @@ func maybe_register_serial(port_name string, r *Router) {
 
 	port, err := serial.Open(port_name, &serial.Mode{BaudRate: BAUDRATE})
 	if err != nil {
-		log.Fatal(err)
+		log.Println("Error: ", err)
 	}
 	port.SetReadTimeout(serial.NoTimeout)
 	if err != nil {
-		log.Fatal(err)
+		log.Println("Error: ", err)
 	}
 	defer port.Close()
 
