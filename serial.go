@@ -6,6 +6,7 @@ import (
 	"log"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"go.bug.st/serial"
@@ -28,7 +29,7 @@ func maybe_register_serial(port_name string, r *Router) {
 	if err != nil {
 		log.Println("Error: ", err)
 	}
-	port.SetReadTimeout(serial.NoTimeout)
+	err = port.SetReadTimeout(time.Second * 20) //Set timeout for Handshake to 20 Sekonds per connection
 	if err != nil {
 		log.Println("Error: ", err)
 	}
@@ -45,7 +46,13 @@ func maybe_register_serial(port_name string, r *Router) {
 	var hP *Package
 	buf := make_package_bytes_buffer()
 
+	try := 0
 	for err != nil {
+		try = try + 1
+		if try > 10 {
+			fmt.Println("Handshake faild for: ", port_name)
+			return
+		}
 
 		_, err = io.ReadFull(port, buf)
 		if err != nil {
@@ -62,6 +69,11 @@ func maybe_register_serial(port_name string, r *Router) {
 		address, channel, snooping, has_dynamic_src, err = hP.asHandshake(r)
 	}
 	defer r.notifyDisconnected(address)
+
+	err = port.SetReadTimeout(serial.NoTimeout) //Disable timeout
+	if err != nil {
+		log.Println("Error: ", err)
+	}
 
 	if has_dynamic_src {
 		n, err := port.Write(hP.toBytes()) //HP sollte korrekte neue SRC haben (wegen asHandshake)
