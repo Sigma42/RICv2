@@ -158,7 +158,7 @@ func main_serial(r *Router) {
 
 	ports, err := serial.GetPortsList()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	for _, port := range ports {
@@ -167,14 +167,14 @@ func main_serial(r *Router) {
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	defer watcher.Close()
 
 	// Add a path.
 	err = watcher.AddWith("/dev")
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	//Handle Updates
