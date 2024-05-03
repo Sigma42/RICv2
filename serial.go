@@ -14,7 +14,7 @@ import (
 
 const BAUDRATE = 57600 //115200 //9600
 var SELECTORS = regexp.MustCompile(`(tty[\s\S]*?(ACM))|((ACM)[\s\S]*?tty)`)
-var SELECTORS_MAC = regexp.MustCompile(`cu\.usbmodem`)
+var SELECTORS_MAC = regexp.MustCompile(`cu\.usbmodem|tty.usbmodem`)
 var SELECTORS_WIN = regexp.MustCompile(`COM`)
 
 func maybe_register_serial(port_name string, r *Router) {
