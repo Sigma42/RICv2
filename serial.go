@@ -28,12 +28,14 @@ func maybe_register_serial(port_name string, r *Router) {
 	port, err := serial.Open(port_name, &serial.Mode{BaudRate: BAUDRATE})
 	if err != nil {
 		log.Println("Error: ", err)
+		return
 	}
 
 	dur := 20 * time.Second
 	err = port.SetReadTimeout(dur) //Set timeout for Handshake to 20 Sekonds per connection
 	if err != nil {
 		log.Println("Error: ", err)
+		return
 	}
 	defer port.Close()
 
@@ -75,6 +77,7 @@ func maybe_register_serial(port_name string, r *Router) {
 	err = port.SetReadTimeout(serial.NoTimeout) //Disable timeout
 	if err != nil {
 		log.Println("Error: ", err)
+		return
 	}
 
 	if has_dynamic_src {
