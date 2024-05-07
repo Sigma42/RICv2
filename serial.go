@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"regexp"
+	"runtime"
 	"sync"
 	"time"
 
@@ -17,7 +18,16 @@ var SELECTORS = regexp.MustCompile(`(tty[\s\S]*?(ACM))|((ACM)[\s\S]*?tty)`)
 var SELECTORS_MAC = regexp.MustCompile(`tty\.usbmodem`)
 var SELECTORS_WIN = regexp.MustCompile(`COM`)
 
+var usedPorts sync.Map
+
 func maybe_register_serial(port_name string, r *Router) {
+
+	_, loaded := usedPorts.LoadOrStore(port_name, port_name)
+	if loaded {
+		return
+	}
+	defer usedPorts.Delete(port_name)
+
 	fmt.Println("try:", port_name)
 	if !SELECTORS.Match([]byte(port_name)) && !SELECTORS_MAC.Match([]byte(port_name)) && !SELECTORS_WIN.Match([]byte(port_name)) {
 		return
@@ -28,12 +38,14 @@ func maybe_register_serial(port_name string, r *Router) {
 	port, err := serial.Open(port_name, &serial.Mode{BaudRate: BAUDRATE})
 	if err != nil {
 		log.Println("Error: ", err)
+		return
 	}
 
 	dur := 20 * time.Second
 	err = port.SetReadTimeout(dur) //Set timeout for Handshake to 20 Sekonds per connection
 	if err != nil {
 		log.Println("Error: ", err)
+		return
 	}
 	defer port.Close()
 
@@ -75,6 +87,7 @@ func maybe_register_serial(port_name string, r *Router) {
 	err = port.SetReadTimeout(serial.NoTimeout) //Disable timeout
 	if err != nil {
 		log.Println("Error: ", err)
+		return
 	}
 
 	if has_dynamic_src {
@@ -181,33 +194,49 @@ func main_serial(r *Router) {
 		go maybe_register_serial(port, r)
 	}
 
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Println(err)
-	}
-	defer watcher.Close()
+	if runtime.GOOS == "linux" {
 
-	// Add a path.
-	err = watcher.AddWith("/dev")
-	if err != nil {
-		log.Println(err)
-	}
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			log.Println(err)
+		}
+		defer watcher.Close()
 
-	//Handle Updates
-	for {
-		select {
-		case event, ok := <-watcher.Events:
-			if !ok {
-				return
+		// Add a path.
+		err = watcher.AddWith("/dev")
+		if err != nil {
+			log.Println(err)
+		}
+
+		//Handle Updates
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				if event.Has(fsnotify.Create) {
+					go maybe_register_serial(event.Name, r)
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Println("error:", err)
 			}
-			if event.Has(fsnotify.Create) {
-				go maybe_register_serial(event.Name, r)
+		}
+	} else { // Fallback für nicht linux
+		for {
+			time.Sleep(time.Second * 10)
+
+			ports, err = serial.GetPortsList()
+			if err != nil {
+				log.Println("Error: ", err)
+			} else {
+				for _, port := range ports {
+					go maybe_register_serial(port, r)
+				}
 			}
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return
-			}
-			log.Println("error:", err)
 		}
 	}
 }
