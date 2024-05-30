@@ -67,7 +67,7 @@ String RobotikInterConnect::recv() {
     for (int i=0; i < 20; i++) {
         inStringBuffer[i] = p.data[i];
     }
-
+    
     inStringBuffer[21] = 0;
     return String(inStringBuffer);
 }
